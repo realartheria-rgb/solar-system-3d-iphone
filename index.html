@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Solar System 3D — iPhone</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+  background: #000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #fff;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+#app { position: fixed; inset: 0; }
+#app canvas { display: block; width: 100%; height: 100%; }
+
+#splash {
+  position: fixed; inset: 0; z-index: 1000;
+  background: radial-gradient(ellipse at center, #0a0f1a 0%, #000 100%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 20px;
+  transition: opacity 1s ease, visibility 1s ease;
+}
+#splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+#splash h1 {
+  font-size: clamp(1.3rem, 5vw, 2rem);
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.4rem;
+}
+#splash p {
+  color: #88aacc;
+  margin-bottom: 1.6rem;
+  font-size: 13px;
+}
+.loader {
+  width: 160px;
+  height: 3px;
+  background: rgba(100,150,255,0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.loader::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #4a8ce0, #7ec4ff);
+  animation: loading 2s ease-in-out;
+}
+@keyframes loading { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+
+#ui {
+  position: fixed;
+  top: env(safe-area-inset-top, 10px);
+  left: 10px; right: 10px;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.pill {
+  pointer-events: auto;
+  background: rgba(20,25,40,0.85);
+  border: 1px solid rgba(100,120,180,0.4);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 8px 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  color: #cfe6ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.icon-btn {
+  pointer-events: auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(20,25,40,0.85);
+  border: 1px solid rgba(100,120,180,0.4);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #cfe6ff;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+}
+
+#controls {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cbtn {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(20,25,40,0.85);
+  border: 1px solid rgba(100,120,180,0.4);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #cfe6ff;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+}
+.cbtn:active {
+  background: rgba(60,100,180,0.9);
+  transform: scale(0.94);
+}
+
+#tooltip {
+  position: fixed;
+  left: 10px;
+  bottom: calc(env(safe-area-inset-bottom, 16px) + 44px);
+  z-index: 100;
+  background: rgba(0,0,0,0.75);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  max-width: 260px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s;
+  border: 1px solid rgba(100,120,180,0.3);
+}
+#tooltip.show { opacity: 1; }
+#tooltip .name { font-weight: 700; color: #7ec4ff; margin-bottom: 3px; }
+#tooltip .facts { color: #cfe6ff; margin-top: 4px; font-size: 11px; }
+
+#hint {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: env(safe-area-inset-bottom, 14px);
+  text-align: center;
+  z-index: 100;
+  pointer-events: none;
+  font-size: 12px;
+  color: rgba(200,220,255,0.75);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="splash">
+    <h1>Солнечная система 3D</h1>
+    <p>Подготовка сцены…</p>
+    <div class="loader"></div>
+  </div>
+
+  <div id="ui">
+    <div class="pill" id="titlePill">🌍 Солнечная система</div>
+    <div style="display:flex; gap:8px;">
+      <button class="icon-btn" id="btnPause" aria-label="Пауза">⏯</button>
+      <button class="icon-btn" id="btnReset" aria-label="Сброс">↺</button>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button class="cbtn" id="btnZoomIn" aria-label="Увеличить">＋</button>
+    <button class="cbtn" id="btnZoomOut" aria-label="Уменьшить">－</button>
+    <button class="cbtn" id="btnTop" aria-label="Сверху">⤒</button>
+    <button class="cbtn" id="btnPrev" aria-label="Назад">‹</button>
+    <button class="cbtn" id="btnNext" aria-label="Вперёд">›</button>
+  </div>
+
+  <div id="tooltip">
+    <div class="name" id="ttName"></div>
+    <div id="ttDesc" style="color:#cfe6ff; font-size:12px;"></div>
+    <div class="facts" id="ttFacts"></div>
+  </div>
+
+  <div id="hint">Тап по планете / свайп для поворота / pinch для зума</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const PLANET_DATA = [
+  { name: 'Меркурий', baseColor: '#b8a99a', size: 1.2, distance: 30, speed: 0.04, desc: 'Ближайшая к Солнцу планета.', facts: 'Год длится 88 дней. Нет атмосферы и спутников. Поверхность покрыта кратерами.' },
+  { name: 'Венера',   baseColor: '#e6d2b8', size: 2.4, distance: 46, speed: 0.03, desc: 'Плотная атмосфера, крайне высокая температура.', facts: 'Самая горячая планета (470°C). Вращается в обратную сторону. Давление в 90 раз выше земного.' },
+  { name: 'Земля',    baseColor: '#4f8edb', size: 2.5, distance: 64, speed: 0.02, desc: 'Наша родная планета.', facts: 'Единственная с жидкой водой. Имеет магнитное поле. Спутник Луна стабилизирует ось.', moons: [
+    { name: 'Луна', size: 0.7, distance: 7, speed: 0.06, color: '#bfbfbf' }
+  ]},
+  { name: 'Марс',     baseColor: '#d07a52', size: 1.7, distance: 82, speed: 0.018, desc: 'Красная планета.', facts: 'Olympus Mons - крупнейший вулкан (21 км). Два спутника: Фобос и Деймос.', moons: [
+    { name: 'Фобос', size: 0.4, distance: 3.5, speed: 0.07, color: '#9e8e7a' },
+    { name: 'Деймос', size: 0.3, distance: 5.0, speed: 0.05, color: '#8a8072' }
+  ]},
+  { name: 'Юпитер',   baseColor: '#e8c99b', size: 5.6, distance: 115, speed: 0.009, desc: 'Крупнейшая планета.', facts: 'Большое Красное Пятно - шторм 350+ лет. 95 спутников. Масса в 318 раз больше Земли.' },
+  { name: 'Сатурн',   baseColor: '#f3dc8a', size: 4.6, distance: 155, speed: 0.007, rings: true, desc: 'Знаменит кольцами.', facts: 'Кольца шириной 282 000 км. Плотность ниже воды - мог бы плавать.' },
+  { name: 'Уран',     baseColor: '#a8d8f0', size: 3.4, distance: 195, speed: 0.005, desc: 'Ледяной гигант.', facts: 'Повёрнут на бок (ось 98°). 27 спутников. Температура -224°C, самый холодный.', moons: [
+    { name: 'Титан', size: 0.9, distance: 8, speed: 0.025, color: '#d9b36b' },
+    { name: 'Энцелад', size: 0.4, distance: 10, speed: 0.02, color: '#e8eef5' }
+  ]},
+  { name: 'Нептун',   baseColor: '#6088e8', size: 3.3, distance: 235, speed: 0.004, desc: 'Далекий ледяной мир.', facts: 'Ветра до 2100 км/ч. Открыт по расчётам. Год длится 165 земних лет.', moons: [
+    { name: 'Тритон', size: 0.7, distance: 8, speed: 0.022, color: '#c6cdd8' }
+  ]}
+];
+
+let scene, camera, renderer, controls, clock;
+let planets = [], labels = [], moons = [], asteroids = [], comets = [];
+let raycaster, pointer;
+let paused = false;
+let initialized = false;
+
+function createTexture(baseColor, size = 256) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size / 2;
+  const ctx = canvas.getContext('2d');
+  const light = new THREE.Color(baseColor).multiplyScalar(1.5).getStyle();
+  const dark = new THREE.Color(baseColor).multiplyScalar(0.45).getStyle();
+  const gr = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gr.addColorStop(0, light);
+  gr.addColorStop(0.5, baseColor);
+  gr.addColorStop(1, dark);
+  ctx.fillStyle = gr;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.globalCompositeOperation = 'overlay';
+  for (let i = 0; i < 70; i++) {
+    const w = Math.random() * 70 + 10;
+    const h = Math.random() * 5 + 2;
+    ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.28 + 0.1})`;
+    ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, w, h);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  return new THREE.CanvasTexture(canvas);
+}
+
+function createSunTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createRadialGradient(128, 64, 18, 128, 64, 128);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.15, '#fff5cc');
+  g.addColorStop(0.4, '#ffdd88');
+  g.addColorStop(0.7, '#ffaa00');
+  g.addColorStop(1, '#ff6600');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 128);
+  return new THREE.CanvasTexture(canvas);
+}
+
+function init() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / Math.max(window.innerHeight, 1), 0.1, 2000);
+  camera.position.set(0, 90, 180);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('app').appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 25;
+  controls.maxDistance = 380;
+  controls.enablePan = false;
+
+  clock = new THREE.Clock();
+  raycaster = new THREE.Raycaster();
+  pointer = new THREE.Vector2();
+
+  createStars();
+  createSun();
+  createPlanets();
+  createAsteroids();
+  createComets();
+  setupLights();
+  bindEvents();
+
+  setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1500);
+  initialized = true;
+  animate();
+}
+
+function createStars() {
+  const n = 2000;
+  const pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    pos[i * 3] = (Math.random() - 0.5) * 2200;
+    pos[i * 3 + 1] = (Math.random() - 0.5) * 2200;
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 2200;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0.9, sizeAttenuation: true })));
+}
+
+function createSun() {
+  const geo = new THREE.SphereGeometry(13, 48, 48);
+  const mat = new THREE.MeshBasicMaterial({ map: createSunTexture() });
+  const sun = new THREE.Mesh(geo, mat);
+  sun.userData = { name: 'Солнце', desc: 'Центр системы.', facts: 'Звезда главной последовательности. Состоит из водорода и гелия. Возраст ~4.6 млрд лет.' };
+  scene.add(sun);
+
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(128, 128, 18, 128, 128, 128);
+  g.addColorStop(0, 'rgba(255,220,120,0.95)');
+  g.addColorStop(0.18, 'rgba(255,180,60,0.7)');
+  g.addColorStop(0.45, 'rgba(255,120,20,0.25)');
+  g.addColorStop(1, 'rgba(255,80,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 256);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true, opacity: 0.9 }));
+  glow.scale.set(110, 110, 1);
+  sun.add(glow);
+}
+
+function createPlanets() {
+  PLANET_DATA.forEach((data) => {
+    const geo = new THREE.SphereGeometry(data.size, 40, 40);
+    const mat = new THREE.MeshStandardMaterial({ map: createTexture(data.baseColor), roughness: 0.65, metalness: 0.05 });
+    const planet = new THREE.Mesh(geo, mat);
+    const angle = Math.random() * Math.PI * 2;
+    planet.position.x = Math.cos(angle) * data.distance;
+    planet.position.z = Math.sin(angle) * data.distance;
+    planet.userData = { ...data, angle };
+    scene.add(planet);
+    planets.push(planet);
+    createOrbit(data.distance);
+    createLabel(data.name, planet.position);
+
+    if (data.rings) {
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(data.size * 1.5, data.size * 2.5, 64),
+        new THREE.MeshBasicMaterial({ color: 0xd6c89e, side: THREE.DoubleSide, transparent: true, opacity: 0.7, depthWrite: false })
+      );
+      ring.rotation.x = Math.PI * 0.5;
+      planet.add(ring);
+    }
+
+    if (Array.isArray(data.moons)) {
+      data.moons.forEach((m) => {
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(m.size, 24, 24),
+          new THREE.MeshStandardMaterial({ map: createTexture((m && m.color) || '#cccccc', 128), roughness: 0.9 })
+        );
+        mesh.userData = { ...m, parentPlanet: planet, angle: Math.random() * Math.PI * 2 };
+        scene.add(mesh);
+        moons.push(mesh);
+      });
+    }
+  });
+}
+
+function createOrbit(radius) {
+  const pts = [];
+  for (let i = 0; i <= 96; i++) {
+    const a = (i / 96) * Math.PI * 2;
+    pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
+  }
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x8aaacc, transparent: true, opacity: 0.6 })));
+}
+
+function createLabel(name, position) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.font = 'bold 20px -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(200,220,255,0.9)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(name, 128, 32);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }));
+  sprite.scale.set(18, 4.5, 1);
+  sprite.position.set(position.x, 0, position.z);
+  sprite.userData = { name };
+  scene.add(sprite);
+  labels.push(sprite);
+}
+
+function createAsteroids() {
+  const n = 800;
+  const inner = 105, outer = 118;
+  for (let i = 0; i < n; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = inner + Math.random() * (outer - inner);
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(Math.random() * 0.2 + 0.08, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0x9a9488, roughness: 0.9 })
+    );
+    mesh.position.set(Math.cos(angle) * r, (Math.random() - 0.5) * 2.5, Math.sin(angle) * r);
+    mesh.userData = { isAsteroid: true, angle, radius: r, speed: 0.0008 + Math.random() * 0.0004 };
+    scene.add(mesh);
+    asteroids.push(mesh);
+  }
+}
+
+function createComets() {
+  [
+    { name: 'Комета Галлея', size: 0.5, distance: 160, speed: 0.0025, tilt: 0.15 },
+    { name: 'Комета Хейла-Боппа', size: 0.7, distance: 190, speed: 0.002, tilt: -0.2 },
+    { name: 'Комета Веста', size: 0.5, distance: 140, speed: 0.003, tilt: 0.25 }
+  ].forEach((c) => {
+    const group = new THREE.Group();
+    group.add(new THREE.Mesh(
+      new THREE.SphereGeometry(c.size, 24, 24),
+      new THREE.MeshStandardMaterial({ color: 0xc9d8e8, roughness: 0.8 })
+    ));
+
+    const tc = document.createElement('canvas');
+    tc.width = 256; tc.height = 128;
+    const tx = tc.getContext('2d');
+    const tg = tx.createLinearGradient(0, 0, 256, 0);
+    tg.addColorStop(0, 'rgba(180,220,255,0.95)');
+    tg.addColorStop(0.4, 'rgba(120,180,220,0.5)');
+    tg.addColorStop(1, 'rgba(60,100,140,0)');
+    tx.fillStyle = tg;
+    tx.fillRect(0, 40, 256, 48);
+
+    const tail = new THREE.Mesh(
+      new THREE.PlaneGeometry(18, 7.2),
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(tc), transparent: true, depthWrite: false, side: THREE.DoubleSide })
+    );
+    tail.position.set(-12, 0, 0);
+    group.add(tail);
+
+    group.rotation.z = c.tilt || 0;
+    group.userData = { isComet: true, ...c };
+    scene.add(group);
+    comets.push(group);
+  });
+}
+
+function setupLights() {
+  scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+  const sun = new THREE.PointLight(0xffffff, 5, 900);
+  sun.position.set(0, 0, 0);
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x99bbff, 1.1);
+  fill.position.set(80, 40, 100);
+  scene.add(fill);
+}
+
+function bindEvents() {
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / Math.max(window.innerHeight, 1);
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  const hitTest = (x, y) => {
+    pointer.x = (x / window.innerWidth) * 2 - 1;
+    pointer.y = -(y / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    return raycaster.intersectObjects(planets);
+  };
+
+  window.addEventListener('touchend', (e) => {
+    if (!e.changedTouches || e.changedTouches.length !== 1) return;
+    const t = e.changedTouches[0];
+    const hits = hitTest(t.clientX, t.clientY);
+    if (hits.length) focusPlanet(hits[0].object);
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (!e.touches || !e.touches.length) return;
+    hitTest(e.touches[0].clientX, e.touches[0].clientY);
+    const tooltip = document.getElementById('tooltip');
+    if (!tooltip.classList.contains('show')) return;
+    tooltip.classList.remove('show');
+  }, { passive: true });
+
+  window.addEventListener('mousemove', (e) => {
+    const hits = hitTest(e.clientX, e.clientY);
+    const tooltip = document.getElementById('tooltip');
+    if (hits.length) {
+      const d = hits[0].object.userData;
+      document.getElementById('ttName').textContent = d.name || '—';
+      document.getElementById('ttDesc').textContent = d.desc || '';
+      document.getElementById('ttFacts').textContent = d.facts || '';
+      tooltip.classList.add('show');
+    } else {
+      tooltip.classList.remove('show');
+    }
+  });
+
+  document.getElementById('btnPause').addEventListener('click', () => {
+    paused = !paused;
+    document.getElementById('btnPause').textContent = paused ? '▶' : '⏯';
+    document.getElementById('hint').textContent = paused ? 'Пауза' : 'Тап по планете / свайп для поворота / pinch для зума';
+  });
+
+  document.getElementById('btnReset').addEventListener('click', resetView);
+  document.getElementById('btnZoomIn').addEventListener('click', () => zoomBy(-22));
+  document.getElementById('btnZoomOut').addEventListener('click', () => zoomBy(22));
+  document.getElementById('btnTop').addEventListener('click', topView);
+  document.getElementById('btnPrev').addEventListener('click', () => travel(-1));
+  document.getElementById('btnNext').addEventListener('click', () => travel(1));
+}
+
+let travelIndex = 0;
+function focusPlanet(planet) {
+  const idx = planets.indexOf(planet);
+  if (idx >= 0) {
+    travelIndex = idx;
+    applyFocus(planet);
+  }
+}
+
+function applyFocus(planet) {
+  const pos = planet.position;
+  const offset = new THREE.Vector3(0, planet.userData.size * 1.8, planet.userData.size * 2.6);
+  const targetCam = pos.clone().add(offset);
+  const startCam = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const endTarget = pos.clone();
+  let t = 0;
+  (function step() {
+    t += 0.04;
+    if (t >= 1) {
+      camera.position.copy(targetCam);
+      controls.target.copy(endTarget);
+      return;
+    }
+    camera.position.lerpVectors(startCam, targetCam, t);
+    controls.target.lerpVectors(startTarget, endTarget, t);
+    requestAnimationFrame(step);
+  })();
+}
+
+function travel(dir) {
+  if (!planets.length) return;
+  travelIndex = (travelIndex + dir + planets.length) % planets.length;
+  applyFocus(planets[travelIndex]);
+}
+
+function resetView() {
+  const start = camera.position.clone();
+  const end = new THREE.Vector3(0, 90, 180);
+  const startTarget = controls.target.clone();
+  const endTarget = new THREE.Vector3(0, 0, 0);
+  let t = 0;
+  (function step() {
+    t += 0.04;
+    if (t >= 1) {
+      camera.position.copy(end);
+      controls.target.copy(endTarget);
+      return;
+    }
+    camera.position.lerpVectors(start, end, t);
+    controls.target.lerpVectors(startTarget, endTarget, t);
+    requestAnimationFrame(step);
+  })();
+}
+
+function zoomBy(delta) {
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  camera.position.add(dir.multiplyScalar(delta));
+}
+
+function topView() {
+  const start = camera.position.clone();
+  const target = controls.target.clone();
+  const end = target.clone().add(new THREE.Vector3(0, 160, 0.01));
+  let t = 0;
+  (function step() {
+    t += 0.04;
+    if (t >= 1) {
+      camera.position.copy(end);
+      controls.target.copy(target);
+      return;
+    }
+    camera.position.lerpVectors(start, end, t);
+    controls.target.copy(target);
+    requestAnimationFrame(step);
+  })();
+}
+
+function animate() {
+  if (!initialized) return;
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.1);
+
+  if (!paused) {
+    planets.forEach((p) => {
+      p.userData.angle += p.userData.speed * dt;
+      p.position.x = Math.cos(p.userData.angle) * p.userData.distance;
+      p.position.z = Math.sin(p.userData.angle) * p.userData.distance;
+      p.rotation.y += 0.003 * dt;
+    });
+
+    labels.forEach((l) => {
+      const planet = planets.find((p) => p.userData.name === l.userData.name);
+      if (planet) {
+        l.position.x = planet.position.x;
+        l.position.z = planet.position.z;
+        l.position.y = planet.userData.size + 4;
+      }
+    });
+
+    moons.forEach((m) => {
+      const parent = m.userData.parentPlanet;
+      if (!parent) return;
+      m.userData.angle += m.userData.speed * dt;
+      m.position.x = parent.position.x + Math.cos(m.userData.angle) * m.userData.distance;
+      m.position.z = parent.position.z + Math.sin(m.userData.angle) * m.userData.distance;
+      m.position.y = parent.position.y;
+    });
+
+    asteroids.forEach((a) => {
+      a.userData.angle += a.userData.speed * dt;
+      a.position.x = Math.cos(a.userData.angle) * a.userData.radius;
+      a.position.z = Math.sin(a.userData.angle) * a.userData.radius;
+    });
+
+    comets.forEach((c) => {
+      c.userData.angle += c.userData.speed * dt;
+      const r = c.userData.distance || 160;
+      c.position.x = Math.cos(c.userData.angle) * r;
+      c.position.z = Math.sin(c.userData.angle) * r;
+    });
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+init();
+</script>
+</body>
+</html>
