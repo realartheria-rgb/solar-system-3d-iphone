@@ -156,6 +156,29 @@ html, body {
   color: rgba(200,220,255,0.75);
   text-shadow: 0 1px 4px rgba(0,0,0,0.6);
 }
+
+@media (pointer: coarse) {
+  .icon-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 22px;
+    border-radius: 16px;
+  }
+  .cbtn {
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
+    border-radius: 16px;
+  }
+  .pill {
+    font-size: 14px;
+    padding: 10px 14px;
+  }
+  #tooltip {
+    font-size: 13px;
+    max-width: 300px;
+  }
+}
 </style>
 </head>
 <body>
@@ -1661,7 +1684,16 @@ function bindEvents() {
     if (!e.changedTouches || e.changedTouches.length !== 1) return;
     const t = e.changedTouches[0];
     const hits = hitTest(t.clientX, t.clientY);
-    if (hits.length) focusPlanet(hits[0].object);
+    if (hits.length) {
+      focusPlanet(hits[0].object);
+      const d = hits[0].object.userData;
+      document.getElementById('ttName').textContent = d.name || '—';
+      document.getElementById('ttDesc').textContent = d.desc || '';
+      document.getElementById('ttFacts').textContent = d.facts || '';
+      document.getElementById('tooltip').classList.add('show');
+    } else {
+      document.getElementById('tooltip').classList.remove('show');
+    }
   }, { passive: true });
 
   window.addEventListener('touchmove', (e) => {
