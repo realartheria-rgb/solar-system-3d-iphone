@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Solar System 3D — iPhone</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body {
   overflow: hidden;
-  position: fixed;
-  inset: 0;
+  margin: 0;
+  padding: 0;
   background: #000;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #fff;
@@ -16,6 +17,7 @@ html, body {
   height: 100%;
   touch-action: none;
   overscroll-behavior: none;
+  -webkit-overflow-scrolling: none;
 }
 #app { position: fixed; inset: 0; }
 #app canvas { display: block; width: 100%; height: 100%; }
@@ -288,37 +290,48 @@ function createSunTexture() {
 }
 
 function init() {
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(60, window.innerWidth / Math.max(window.innerHeight, 1), 0.1, 2000);
-  camera.position.set(0, 90, 180);
+  try {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / Math.max(window.innerHeight, 1), 0.1, 2000);
+    camera.position.set(0, 90, 180);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.getElementById('app').appendChild(renderer.domElement);
+    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('app').appendChild(renderer.domElement);
 
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
-  controls.minDistance = 25;
-  controls.maxDistance = 380;
-  controls.enablePan = false;
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 25;
+    controls.maxDistance = 380;
+    controls.enablePan = false;
 
-  clock = new THREE.Clock();
-  raycaster = new THREE.Raycaster();
-  pointer = new THREE.Vector2();
+    clock = new THREE.Clock();
+    raycaster = new THREE.Raycaster();
+    pointer = new THREE.Vector2();
 
-  createStars();
-  createSun();
-  createPlanets();
-  createAsteroids();
-  createComets();
-  setupLights();
-  bindEvents();
+    createStars();
+    createSun();
+    createPlanets();
+    createAsteroids();
+    createComets();
+    setupLights();
+    bindEvents();
 
-  setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1500);
-  initialized = true;
-  animate();
+    setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1500);
+    initialized = true;
+    animate();
+  } catch (err) {
+    console.error('Init failed:', err);
+    const splash = document.getElementById('splash');
+    if (splash && !splash.classList.contains('hidden')) {
+      splash.classList.add('hidden');
+    }
+    const hint = document.getElementById('hint');
+    if (hint) hint.textContent = 'Ошибка загрузки. Обновите страницу.';
+  }
+  initAttempted = true;
 }
 
 function createStars() {
@@ -675,34 +688,40 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// Safety timeout: hide splash after 5s regardless
+// Safety timeout: hide splash after 8s regardless
 setTimeout(() => {
   const splash = document.getElementById('splash');
   if (splash && !splash.classList.contains('hidden')) {
     splash.classList.add('hidden');
   }
-}, 5000);
+}, 8000);
 
 let threeReady = false;
 let initAttempted = false;
+let waitRetries = 0;
 
 function waitForThree() {
   if (!threeReady && window.THREE && window.THREE.OrbitControls) {
     threeReady = true;
     init();
-  } else if (!threeReady) {
+  } else if (!threeReady && waitRetries < 60) {
+    waitRetries++;
     setTimeout(waitForThree, 100);
+  } else if (!threeReady) {
+    console.warn('THREE/OrbitControls not loaded in time, forcing init');
+    threeReady = true;
+    init();
   }
 }
 
-// Fallback: force init after 10s if nothing loaded
+// Fallback: force init after 12s if nothing loaded
 setTimeout(() => {
   if (!threeReady) {
     console.warn('THREE/OrbitControls not loaded in time, forcing init');
     threeReady = true;
     init();
   }
-}, 10000);
+}, 12000);
 
 waitForThree();
 </script>
