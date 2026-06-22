@@ -201,8 +201,8 @@ html, body {
 </div>
 
 <!-- Load Three.js as global (UMD) instead of ES modules -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/controls/OrbitControls.min.js"></script>
 
 <script>
 var PLANET_DATA = [
@@ -235,7 +235,10 @@ var infoPanelTimer = null;
 
 // THREE is loaded as global from UMD script
 var THREE = window.THREE;
-var OrbitControls = THREE.OrbitControls;
+var OrbitControls = window.THREE && window.THREE.OrbitControls;
+if (!OrbitControls && window.OrbitControls) {
+  OrbitControls = window.OrbitControls;
+}
 
 function createTexture(baseColor, size) {
   size = size || 256;
