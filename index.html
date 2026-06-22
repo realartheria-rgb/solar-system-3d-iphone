@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Solar System 3D - iPhone</title>
+<title>Solar System 3D — iPhone</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body {
@@ -73,9 +72,9 @@ html, body {
   border: 1px solid rgba(100,120,180,0.4);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  padding: 10px 14px;
+  padding: 8px 10px;
   border-radius: 14px;
-  font-size: 14px;
+  font-size: 12px;
   color: #cfe6ff;
   display: inline-flex;
   align-items: center;
@@ -83,15 +82,15 @@ html, body {
 }
 .icon-btn {
   pointer-events: auto;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
   background: rgba(20,25,40,0.85);
   border: 1px solid rgba(100,120,180,0.4);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   color: #cfe6ff;
-  font-size: 22px;
+  font-size: 18px;
   display: grid;
   place-items: center;
 }
@@ -104,94 +103,26 @@ html, body {
   z-index: 100;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 .cbtn {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
   background: rgba(20,25,40,0.85);
   border: 1px solid rgba(100,120,180,0.4);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   color: #cfe6ff;
-  font-size: 24px;
+  font-size: 18px;
   display: grid;
   place-items: center;
-  touch-action: manipulation;
 }
 .cbtn:active {
   background: rgba(60,100,180,0.9);
   transform: scale(0.94);
 }
 
-/* Info panel */
-#infoPanel {
-  position: fixed;
-  left: 10px;
-  right: 10px;
-  bottom: calc(env(safe-area-inset-bottom, 14px) + 54px);
-  z-index: 200;
-  background: rgba(10,15,30,0.92);
-  border: 1px solid rgba(100,120,180,0.4);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-radius: 18px;
-  padding: 16px 18px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(10px);
-  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
-  max-height: 40vh;
-  overflow-y: auto;
-}
-#infoPanel.show {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-#infoPanel .close {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  font-size: 22px;
-  color: #8aa0c0;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-#infoPanel .name {
-  font-size: 20px;
-  font-weight: 700;
-  color: #7ec4ff;
-  margin-bottom: 6px;
-  padding-right: 40px;
-}
-#infoPanel .desc {
-  font-size: 15px;
-  color: #cfe6ff;
-  margin-bottom: 10px;
-  line-height: 1.4;
-}
-#infoPanel .facts {
-  font-size: 14px;
-  color: #a0b8d8;
-  line-height: 1.55;
-  padding-top: 8px;
-  border-top: 1px solid rgba(100,120,180,0.25);
-}
-#infoPanel .facts ul {
-  margin: 0;
-  padding: 0 0 0 18px;
-}
-#infoPanel .facts li {
-  margin-bottom: 5px;
-}
-
-/* Old tooltip - hidden on mobile, shown on desktop hover */
 #tooltip {
   position: fixed;
   left: 10px;
@@ -221,13 +152,9 @@ html, body {
   text-align: center;
   z-index: 100;
   pointer-events: none;
-  font-size: 14px;
+  font-size: 12px;
   color: rgba(200,220,255,0.75);
   text-shadow: 0 1px 4px rgba(0,0,0,0.6);
-}
-@media (min-width: 768px) {
-  #controls { right: 20px; }
-  .cbtn { width: 52px; height: 52px; font-size: 22px; }
 }
 </style>
 </head>
@@ -235,7 +162,7 @@ html, body {
 <div id="app">
   <div id="splash">
     <h1>Солнечная система 3D</h1>
-    <p>Подготовка сцены...</p>
+    <p>Подготовка сцены…</p>
     <div class="loader"></div>
   </div>
 
@@ -255,15 +182,6 @@ html, body {
     <button class="cbtn" id="btnNext" aria-label="Вперёд">›</button>
   </div>
 
-  <!-- Info panel for mobile tap -->
-  <div id="infoPanel">
-    <div class="close" id="btnClosePanel">✕</div>
-    <div class="name" id="ipName"></div>
-    <div class="desc" id="ipDesc"></div>
-    <div class="facts" id="ipFacts"></div>
-  </div>
-
-  <!-- Tooltip for desktop hover -->
   <div id="tooltip">
     <div class="name" id="ttName"></div>
     <div id="ttDesc" style="color:#cfe6ff; font-size:12px;"></div>
@@ -312,7 +230,6 @@ let planets = [], labels = [], moons = [], asteroids = [], comets = [];
 let raycaster, pointer;
 let paused = false;
 let initialized = false;
-let infoPanelTimer = null;
 
 function createTexture(baseColor, size = 256) {
   const canvas = document.createElement('canvas');
@@ -352,24 +269,6 @@ function createSunTexture() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 256, 128);
   return new THREE.CanvasTexture(canvas);
-}
-
-function showInfoPanel(data) {
-  document.getElementById('ipName').textContent = data.name || '—';
-  document.getElementById('ipDesc').textContent = data.desc || '';
-  document.getElementById('ipFacts').textContent = data.facts || '';
-  document.getElementById('infoPanel').classList.add('show');
-
-  // Auto-hide after 8 seconds
-  if (infoPanelTimer) clearTimeout(infoPanelTimer);
-  infoPanelTimer = setTimeout(() => {
-    hideInfoPanel();
-  }, 8000);
-}
-
-function hideInfoPanel() {
-  document.getElementById('infoPanel').classList.remove('show');
-  if (infoPanelTimer) clearTimeout(infoPanelTimer);
 }
 
 function init() {
@@ -567,13 +466,6 @@ function setupLights() {
   scene.add(fill);
 }
 
-function hitTest(x, y) {
-  pointer.x = (x / window.innerWidth) * 2 - 1;
-  pointer.y = -(y / window.innerHeight) * 2 + 1;
-  raycaster.setFromCamera(pointer, camera);
-  return raycaster.intersectObjects(planets);
-}
-
 function bindEvents() {
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / Math.max(window.innerHeight, 1);
@@ -581,23 +473,28 @@ function bindEvents() {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // Touch events for mobile
+  const hitTest = (x, y) => {
+    pointer.x = (x / window.innerWidth) * 2 - 1;
+    pointer.y = -(y / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    return raycaster.intersectObjects(planets);
+  };
+
   window.addEventListener('touchend', (e) => {
     if (!e.changedTouches || e.changedTouches.length !== 1) return;
     const t = e.changedTouches[0];
     const hits = hitTest(t.clientX, t.clientY);
-    if (hits.length) {
-      const d = hits[0].object.userData;
-      showInfoPanel(d);
-      focusPlanet(hits[0].object);
-    }
+    if (hits.length) focusPlanet(hits[0].object);
   }, { passive: true });
 
   window.addEventListener('touchmove', (e) => {
-    hideInfoPanel();
+    if (!e.touches || !e.touches.length) return;
+    hitTest(e.touches[0].clientX, e.touches[0].clientY);
+    const tooltip = document.getElementById('tooltip');
+    if (!tooltip.classList.contains('show')) return;
+    tooltip.classList.remove('show');
   }, { passive: true });
 
-  // Mouse events for desktop
   window.addEventListener('mousemove', (e) => {
     const hits = hitTest(e.clientX, e.clientY);
     const tooltip = document.getElementById('tooltip');
@@ -612,14 +509,6 @@ function bindEvents() {
     }
   });
 
-  // Close info panel button
-  document.getElementById('btnClosePanel').addEventListener('click', hideInfoPanel);
-  document.getElementById('btnClosePanel').addEventListener('touchend', (e) => {
-    e.preventDefault();
-    hideInfoPanel();
-  });
-
-  // Control buttons
   document.getElementById('btnPause').addEventListener('click', () => {
     paused = !paused;
     document.getElementById('btnPause').textContent = paused ? '▶' : '⏯';
