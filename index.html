@@ -215,7 +215,7 @@ html, body {
 </div>
 
 <script src="build/three.min.js"></script>
-<script src="js/OrbitControls.js"></script>
+<script src="js/OrbitControls.js?v=2"></script>
 <script>
 var THREE = window.THREE;
 var OrbitControls = THREE.OrbitControls;
@@ -675,14 +675,35 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// Wait for THREE to load before init
+// Safety timeout: hide splash after 5s regardless
+setTimeout(() => {
+  const splash = document.getElementById('splash');
+  if (splash && !splash.classList.contains('hidden')) {
+    splash.classList.add('hidden');
+  }
+}, 5000);
+
+let threeReady = false;
+let initAttempted = false;
+
 function waitForThree() {
-  if (window.THREE && window.THREE.OrbitControls) {
+  if (!threeReady && window.THREE && window.THREE.OrbitControls) {
+    threeReady = true;
     init();
-  } else {
+  } else if (!threeReady) {
     setTimeout(waitForThree, 100);
   }
 }
+
+// Fallback: force init after 10s if nothing loaded
+setTimeout(() => {
+  if (!threeReady) {
+    console.warn('THREE/OrbitControls not loaded in time, forcing init');
+    threeReady = true;
+    init();
+  }
+}, 10000);
+
 waitForThree();
 </script>
 </body>
