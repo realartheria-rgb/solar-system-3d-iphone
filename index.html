@@ -201,8 +201,8 @@ html, body {
 </div>
 
 <!-- Load Three.js as global (UMD) instead of ES modules -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/examples/js/controls/OrbitControls.js"></script>
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
 var PLANET_DATA = [
@@ -685,11 +685,17 @@ function animate() {
 }
 
 // Wait for Three.js to load, then init
+var threeLoadAttempts = 0;
 function waitForThree() {
-  if (window.THREE && window.THREE.OrbitControls) {
+  if (window.THREE) {
     init();
   } else {
-    setTimeout(waitForThree, 100);
+    threeLoadAttempts++;
+    if (threeLoadAttempts > 50) {
+      document.getElementById('splash').innerHTML = '<h1>Ошибка загрузки</h1><p>Three.js не загрузился. Проверьте подключение к интернету.</p>';
+      return;
+    }
+    setTimeout(waitForThree, 200);
   }
 }
 waitForThree();
