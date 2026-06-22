@@ -1827,7 +1827,15 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-init();
+// Wait for THREE to load before init
+function waitForThree() {
+  if (window.THREE && window.THREE.OrbitControls) {
+    init();
+  } else {
+    setTimeout(waitForThree, 100);
+  }
+}
+waitForThree();
 </script>
 </body>
 </html>
