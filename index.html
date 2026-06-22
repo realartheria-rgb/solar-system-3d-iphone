@@ -200,9 +200,12 @@ html, body {
   <div id="hint">Тап по планете / свайп для поворота / pinch для зума</div>
 </div>
 
-<!-- Load Three.js as global (UMD) instead of ES modules -->
+<!-- Load Three.js as global (UMD) -->
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three-orbitcontrols@2.110.1/build/three-orbitcontrols.min.js"></script>
+<script>
+// OrbitControls UMD - inlined for compatibility
+// Source: three.js r160 examples/jsm/controls/OrbitControls.js
+
 
 <script>
 var PLANET_DATA = [
