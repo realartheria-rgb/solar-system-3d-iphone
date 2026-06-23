@@ -243,7 +243,7 @@ const PLANET_DATA = [
   ]}
 ];
 
-let scene, camera, renderer, controls, clock;
+let scene, camera, renderer, controls, clock, sun;
 let planets = [], labels = [], moons = [], asteroids = [], comets = [];
 let raycaster, pointer;
 let paused = false;
@@ -350,7 +350,7 @@ function createStars() {
 function createSun() {
   const geo = new THREE.SphereGeometry(13, 48, 48);
   const mat = new THREE.MeshBasicMaterial({ map: createSunTexture() });
-  const sun = new THREE.Mesh(geo, mat);
+  sun = new THREE.Mesh(geo, mat);
   sun.userData = { name: 'Солнце', desc: 'Центр системы.', facts: 'Звезда главной последовательности. Состоит из водорода и гелия. Возраст ~4.6 млрд лет.' };
   scene.add(sun);
 
@@ -401,6 +401,7 @@ function createPlanets() {
         mesh.userData = { ...m, parentPlanet: planet, angle: Math.random() * Math.PI * 2 };
         scene.add(mesh);
         moons.push(mesh);
+        createLabel(m.name, mesh.position);
       });
     }
   });
@@ -428,6 +429,23 @@ function createLabel(name, position) {
   sprite.scale.set(18, 4.5, 1);
   sprite.position.set(position.x, 0, position.z);
   sprite.userData = { name };
+  scene.add(sprite);
+  labels.push(sprite);
+}
+
+function createSunLabel() {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.font = 'bold 20px -apple-system, sans-serif';
+  ctx.fillStyle = 'rgba(255,220,150,0.95)';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Солнце', 128, 32);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }));
+  sprite.scale.set(18, 4.5, 1);
+  sprite.position.set(0, 16, 0);
+  sprite.userData = { name: 'Солнце', desc: 'Центр системы.', facts: 'Звезда главной последовательности. Состоит из водорода и гелия. Возраст ~4.6 млрд лет.' };
   scene.add(sprite);
   labels.push(sprite);
 }
@@ -487,9 +505,10 @@ function createComets() {
 
 function setupLights() {
   scene.add(new THREE.AmbientLight(0xffffff, 1.1));
-  const sun = new THREE.PointLight(0xffffff, 5, 900);
-  sun.position.set(0, 0, 0);
-  scene.add(sun);
+  const sunLight = new THREE.PointLight(0xffffff, 5, 900);
+  sunLight.position.set(0, 0, 0);
+  scene.add(sunLight);
+  createSunLabel();
   const fill = new THREE.DirectionalLight(0x99bbff, 1.1);
   fill.position.set(80, 40, 100);
   scene.add(fill);
@@ -502,11 +521,20 @@ function bindEvents() {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
+  const allInteractive = [];
+  function buildInteractive() {
+    allInteractive.length = 0;
+    if (sun) allInteractive.push(sun);
+    allInteractive.push(...planets);
+    allInteractive.push(...moons);
+  }
+
   const hitTest = (x, y) => {
     pointer.x = (x / window.innerWidth) * 2 - 1;
     pointer.y = -(y / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
-    return raycaster.intersectObjects(planets);
+    buildInteractive();
+    return raycaster.intersectObjects(allInteractive);
   };
 
   window.addEventListener('touchend', (e) => {
@@ -514,8 +542,33 @@ function bindEvents() {
     const t = e.changedTouches[0];
     const hits = hitTest(t.clientX, t.clientY);
     if (hits.length) {
-      focusPlanet(hits[0].object);
-      const d = hits[0].object.userData;
+      const obj = hits[0].object;
+      if (obj === sun) {
+        const pos = sun.position.clone();
+        const offset = new THREE.Vector3(0, 26, 40);
+        const targetCam = pos.clone().add(offset);
+        const startCam = camera.position.clone();
+        const startTarget = controls.target.clone();
+        const endTarget = pos.clone();
+        let t = 0;
+        (function step() {
+          t += 0.04;
+          if (t >= 1) {
+            camera.position.copy(targetCam);
+            controls.target.copy(endTarget);
+            return;
+          }
+          camera.position.lerpVectors(startCam, targetCam, t);
+          controls.target.lerpVectors(startTarget, endTarget, t);
+          requestAnimationFrame(step);
+        })();
+      } else if (planets.includes(obj)) {
+        focusPlanet(obj);
+      } else if (moons.includes(obj)) {
+        const parent = obj.userData.parentPlanet;
+        if (parent) applyFocus(parent);
+      }
+      const d = obj.userData;
       document.getElementById('ttName').textContent = d.name || '—';
       document.getElementById('ttDesc').textContent = d.desc || '';
       document.getElementById('ttFacts').textContent = d.facts || '';
